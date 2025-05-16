@@ -1,0 +1,6 @@
+pyspark
+flytekit
+pandas
+numpy
+flytekitplugins-spark
+tldextract
