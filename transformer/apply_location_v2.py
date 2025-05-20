@@ -92,7 +92,7 @@ def transform(joined_data: DataFrame, odoo_locations: DataFrame, spark: SparkSes
         existing_location_df = df.filter(col('location').isNotNull())
         
             # Apply the UDF to find matching locations
-        matched_df = missing_df.select(
+        matched_df = missing_df.repartition(1500).select(
             "*", 
             find_location_udf(col('url')).alias('location_match')
         )

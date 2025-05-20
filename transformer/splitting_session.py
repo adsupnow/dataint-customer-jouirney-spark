@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, lag, unix_timestamp, lit, coalesce, concat
+from pyspark.sql.functions import col, when, lag, unix_timestamp, lit, concat
 from pyspark.sql.window import Window
 from pyspark.sql.functions import col, sum as spark_sum, min as spark_min
 from pyspark.sql.functions import col, to_timestamp, unix_timestamp
@@ -7,6 +7,7 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
 import tldextract
 import datetime
+from utils.constants import CONVERSION_EVENTS
 
 
 # Define a function to extract the domain from a URL
@@ -19,12 +20,11 @@ def extract_domain(url):
 extract_domain_udf = udf(extract_domain, StringType())
 
 # Define constants
-Conversion_events = ['tour', 'website_schedule_a_tour', 'widget_schedule_a_tour']
 splitrule = 1  # min for inactivity when channel grouping changes
 
 
 # Main transformation function
-def transform(data, column_to_attribute):
+def transform(data, column_to_attribute, split_on_conversion=True):
     print("⚡ Splitting Session -", datetime.datetime.now())
 
     df = data
@@ -32,7 +32,7 @@ def transform(data, column_to_attribute):
     # Apply domain extraction and check for securecafe
     df = df.withColumn('referrer_domain', extract_domain_udf(col('event_referrer')))
     df = df.withColumn('is_securecafe', col('referrer_domain').like("%securecafe.com%"))
-    df = df.withColumn('is_conversion_event', col('event_name').isin(*Conversion_events))
+    df = df.withColumn('is_conversion_event', col('event_name').isin(*CONVERSION_EVENTS))
 
     df = df.withColumn('events_ts', to_timestamp(col('events_ts'), 'yyyy-MM-dd HH:mm:ss'))
 
@@ -60,16 +60,33 @@ def transform(data, column_to_attribute):
     df = df.withColumn('sub_session_id', spark_sum(col('change_in_attribution_grouping')).over(window_spec_cumsum))
 
     window_spec_subsession_cumsum = Window.partitionBy('user_pseudo_id', 'clx_session_number', "sub_session_id").orderBy('events_ts').rowsBetween(Window.unboundedPreceding, Window.currentRow)
-    df = df.withColumn('conversion_sum', spark_sum(when(col('event_name').isin(*Conversion_events), 1).otherwise(0)).over(window_spec_subsession_cumsum))
+    df = df.withColumn('conversion_sum', spark_sum(when(col('event_name').isin(*CONVERSION_EVENTS), 1).otherwise(0)).over(window_spec_subsession_cumsum))
 
+    if split_on_conversion:
     # Create final session ID
-    df = df.withColumn('final_session_id',
-                       concat(col('user_pseudo_id').cast('string'), lit('_'),
-                              col('clx_session_number').cast('string'), lit('_'),
-                              col('sub_session_id').cast('string'), lit('_'),
-                              col('conversion_sum').cast('string')))
-    
-    df = df.drop("conversion_sum")
+        df = df.withColumn('final_session_id',
+                        concat(col('user_pseudo_id').cast('string'), lit('_'),
+                                col('clx_session_number').cast('string'), lit('_'),
+                                col('sub_session_id').cast('string'), lit('_'),
+                                col('conversion_sum').cast('string')))
+        
+        df = df.drop("conversion_sum")
+
+    else:
+
+        df = df.withColumn('final_session_id',
+                        concat(col('user_pseudo_id').cast('string'), lit('_'),
+                                col('clx_session_number').cast('string'), lit('_'),
+                                col('sub_session_id').cast('string')))
+        
+        df_sub_session_min_ts = df.filter(col('conversion_sum') == 1).groupBy('final_session_id') \
+            .agg(spark_min('events_ts').alias('min_conversion_event_ts'))
+        
+        df = df.join(df_sub_session_min_ts, on='final_session_id', how='left') \
+               .filter(col('events_ts') <= col('min_conversion_event_ts'))
+        
+        df = df.drop("min_conversion_event_ts", 'conversion_sum')
+        
 
     # Avoid duplicating clx_session_id column
     if 'clx_session_id' in df.columns:
