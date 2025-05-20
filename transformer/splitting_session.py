@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, lag, unix_timestamp, lit, coalesce, concat
+from pyspark.sql.functions import col, when, lag, unix_timestamp, lit, concat
 from pyspark.sql.window import Window
 from pyspark.sql.functions import col, sum as spark_sum, min as spark_min
 from pyspark.sql.functions import col, to_timestamp, unix_timestamp
@@ -7,6 +7,7 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
 import tldextract
 import datetime
+from utils.constants import Conversion_events
 
 
 # Define a function to extract the domain from a URL
@@ -19,7 +20,6 @@ def extract_domain(url):
 extract_domain_udf = udf(extract_domain, StringType())
 
 # Define constants
-Conversion_events = ["virtual_tour","tcc___first_interaction","tcc___create_lead", "get_directions","floorplans", "contact_form","concession_claimed","chat_initiated","calls_from_website", "apply_now","application_submit","email","tour","download_brochure"]
 splitrule = 1  # min for inactivity when channel grouping changes
 
 

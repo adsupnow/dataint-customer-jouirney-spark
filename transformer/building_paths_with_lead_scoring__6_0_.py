@@ -2,7 +2,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 import datetime
 from pyspark.sql.types import IntegerType
-
+from utils.constants import Conversion_events
 
 def transform(data, column_to_attribute):
     print("⚡ Building Paths With Lead Scoring -", datetime.datetime.now())
@@ -33,9 +33,8 @@ def transform(data, column_to_attribute):
         .agg(F.concat_ws(' > ', F.collect_set(column_to_attribute)).alias('session_path'))
 
     # Check if the user has conversion events
-    conversion_events = ["virtual_tour","tcc___first_interaction","tcc___create_lead", "get_directions","floorplans", "contact_form","concession_claimed","chat_initiated","calls_from_website", "apply_now","application_submit","email","tour","download_brochure"]
     df_has_conversion = df.groupBy('user_pseudo_id') \
-        .agg(F.max(F.when(F.col('event_name').isin(conversion_events), 1).otherwise(0)).alias('has_conversion'))
+        .agg(F.max(F.when(F.col('event_name').isin(Conversion_events), 1).otherwise(0)).alias('has_conversion'))
 
     # Calculate the user's lead score by summing the max session scores
     user_lead_score = df.groupBy('user_pseudo_id', 'clx_session_id') \
