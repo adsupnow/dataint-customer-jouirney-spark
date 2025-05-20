@@ -7,7 +7,7 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
 import tldextract
 import datetime
-from utils.constants import Conversion_events
+from utils.constants import CONVERSION_EVENTS
 
 
 # Define a function to extract the domain from a URL
@@ -32,7 +32,7 @@ def transform(data, column_to_attribute, split_on_conversion=True):
     # Apply domain extraction and check for securecafe
     df = df.withColumn('referrer_domain', extract_domain_udf(col('event_referrer')))
     df = df.withColumn('is_securecafe', col('referrer_domain').like("%securecafe.com%"))
-    df = df.withColumn('is_conversion_event', col('event_name').isin(*Conversion_events))
+    df = df.withColumn('is_conversion_event', col('event_name').isin(*CONVERSION_EVENTS))
 
     df = df.withColumn('events_ts', to_timestamp(col('events_ts'), 'yyyy-MM-dd HH:mm:ss'))
 
@@ -60,7 +60,7 @@ def transform(data, column_to_attribute, split_on_conversion=True):
     df = df.withColumn('sub_session_id', spark_sum(col('change_in_attribution_grouping')).over(window_spec_cumsum))
 
     window_spec_subsession_cumsum = Window.partitionBy('user_pseudo_id', 'clx_session_number', "sub_session_id").orderBy('events_ts').rowsBetween(Window.unboundedPreceding, Window.currentRow)
-    df = df.withColumn('conversion_sum', spark_sum(when(col('event_name').isin(*Conversion_events), 1).otherwise(0)).over(window_spec_subsession_cumsum))
+    df = df.withColumn('conversion_sum', spark_sum(when(col('event_name').isin(*CONVERSION_EVENTS), 1).otherwise(0)).over(window_spec_subsession_cumsum))
 
     if split_on_conversion:
     # Create final session ID

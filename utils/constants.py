@@ -11,5 +11,5 @@ GREYSTAR_IDS = ['64022', '66497', '66499', '66511', '52091', '81860', '63675', '
 # List of Auto/Local IDs
 AUTO_LOCAL_IDS = ['52218', '52234', '70126', '44509', '1', '52705', '66980', '52880', '81853', '52935', '80516', '53117', '61213', '53183', '53254', '53268', '69539', '63110', '53279', '53295', '53301', '70649', '80518', '53771', '71737', '73807', '64294', '74112', '77892', '80381', '64257', '64137', '64242', '64246', '64255', '64258', '64259', '64260', '64261', '64262', '64263', '64264', '64265', '64266', '64267', '64268', '64239', '64241', '64247', '54074', '79837', '70229', '54239', '80389', '81215', '78317', '54291']
 
-Conversion_events = ["virtual_tour","tcc___first_interaction","tcc___create_lead", "get_directions","floorplans", "contact_form","concession_claimed","chat_initiated","calls_from_website", "apply_now","application_submit","email","tour","download_brochure"]
+CONVERSION_EVENTS = ["virtual_tour","tcc___first_interaction","tcc___create_lead", "get_directions","floorplans", "contact_form","concession_claimed","chat_initiated","calls_from_website", "apply_now","application_submit","email","tour","download_brochure"]
 
