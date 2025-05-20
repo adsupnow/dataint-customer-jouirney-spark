@@ -48,14 +48,15 @@ custom_image = ImageSpec(python_version="3.9", registry="docker.io/clxdataint", 
             "spark.driver.memory": "6000M",
             "spark.executor.memory": "40000M",
             "spark.executor.cores": "4",
-            "spark.executor.instances": "4",
+            "spark.executor.instances": "20",
             "spark.driver.cores": "1",
             "spark.jars": "https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop3-latest.jar,https://repo1.maven.org/maven2/com/google/cloud/spark/spark-bigquery-with-dependencies_2.12/0.32.0/spark-bigquery-with-dependencies_2.12-0.32.0.jar",
             "spark.kubernetes.authenticate.driver.serviceAccountName": "default",
             "spark.kubernetes.authenticate.executor.serviceAccountName": "default",
+            "spark.sql.shuffle.partitions": "1500"
         }
     ),
-    limits=Resources(cpu="17",mem="166000M"),
+    limits=Resources(cpu="130",mem="1340000M"),
     container_image=custom_image,
 )
 def main() -> int:

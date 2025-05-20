@@ -33,7 +33,7 @@ def transform(data, column_to_attribute):
         .agg(F.concat_ws(' > ', F.collect_set(column_to_attribute)).alias('session_path'))
 
     # Check if the user has conversion events
-    conversion_events = ['tour', 'website_schedule_a_tour', 'widget_schedule_a_tour']
+    conversion_events = ["virtual_tour","tcc___first_interaction","tcc___create_lead", "get_directions","floorplans", "contact_form","concession_claimed","chat_initiated","calls_from_website", "apply_now","application_submit","email","tour","download_brochure"]
     df_has_conversion = df.groupBy('user_pseudo_id') \
         .agg(F.max(F.when(F.col('event_name').isin(conversion_events), 1).otherwise(0)).alias('has_conversion'))
 

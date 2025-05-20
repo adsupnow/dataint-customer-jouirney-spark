@@ -19,12 +19,12 @@ def extract_domain(url):
 extract_domain_udf = udf(extract_domain, StringType())
 
 # Define constants
-Conversion_events = ['tour', 'website_schedule_a_tour', 'widget_schedule_a_tour']
+Conversion_events = ["virtual_tour","tcc___first_interaction","tcc___create_lead", "get_directions","floorplans", "contact_form","concession_claimed","chat_initiated","calls_from_website", "apply_now","application_submit","email","tour","download_brochure"]
 splitrule = 1  # min for inactivity when channel grouping changes
 
 
 # Main transformation function
-def transform(data, column_to_attribute):
+def transform(data, column_to_attribute, split_on_conversion=True):
     print("⚡ Splitting Session -", datetime.datetime.now())
 
     df = data
@@ -62,14 +62,31 @@ def transform(data, column_to_attribute):
     window_spec_subsession_cumsum = Window.partitionBy('user_pseudo_id', 'clx_session_number', "sub_session_id").orderBy('events_ts').rowsBetween(Window.unboundedPreceding, Window.currentRow)
     df = df.withColumn('conversion_sum', spark_sum(when(col('event_name').isin(*Conversion_events), 1).otherwise(0)).over(window_spec_subsession_cumsum))
 
+    if split_on_conversion:
     # Create final session ID
-    df = df.withColumn('final_session_id',
-                       concat(col('user_pseudo_id').cast('string'), lit('_'),
-                              col('clx_session_number').cast('string'), lit('_'),
-                              col('sub_session_id').cast('string'), lit('_'),
-                              col('conversion_sum').cast('string')))
-    
-    df = df.drop("conversion_sum")
+        df = df.withColumn('final_session_id',
+                        concat(col('user_pseudo_id').cast('string'), lit('_'),
+                                col('clx_session_number').cast('string'), lit('_'),
+                                col('sub_session_id').cast('string'), lit('_'),
+                                col('conversion_sum').cast('string')))
+        
+        df = df.drop("conversion_sum")
+
+    else:
+
+        df = df.withColumn('final_session_id',
+                        concat(col('user_pseudo_id').cast('string'), lit('_'),
+                                col('clx_session_number').cast('string'), lit('_'),
+                                col('sub_session_id').cast('string')))
+        
+        df_sub_session_min_ts = df.filter(col('conversion_sum') == 1).groupBy('final_session_id') \
+            .agg(spark_min('events_ts').alias('min_conversion_event_ts'))
+        
+        df = df.join(df_sub_session_min_ts, on='final_session_id', how='left') \
+               .filter(col('events_ts') <= col('min_conversion_event_ts'))
+        
+        df = df.drop("min_conversion_event_ts", 'conversion_sum')
+        
 
     # Avoid duplicating clx_session_id column
     if 'clx_session_id' in df.columns:
