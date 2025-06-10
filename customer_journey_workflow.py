@@ -21,8 +21,9 @@ from transformer.building_paths_with_lead_scoring__6_0_ import transform as buil
 from transformer.clx_session_model__4_0_ import transform as clx_session_model
 from transformer.combine_tables import transform as combined_tables
 from transformer.apply_location_v2 import transform as apply_location_v2
-from datetime import datetime
-
+from datetime import datetime, timedelta
+from flytekit.core.schedule import CronSchedule
+from flytekit import LaunchPlan
 
 """
 ImageSpec is a way to specify a container image configuration without a
@@ -62,8 +63,10 @@ custom_image = ImageSpec(python_version="3.9", registry="docker.io/clxdataint", 
 def main() -> int:
     spark = flytekit.current_context().spark_session
 
-    start_date = datetime.strptime(os.getenv("STARTDATE"), "%Y-%m-%d")
-    end_date = datetime.strptime(os.getenv("ENDDATE"), "%Y-%m-%d")
+    end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    start_date = end_date - timedelta(days=93)
+    end_date_str = end_date.strftime("%Y%m%d")
+    
 
     event = load_events(start_date=start_date, end_date=end_date, spark=spark)
 
@@ -118,7 +121,7 @@ def main() -> int:
     result = combined_tables(hdf, hdf2)
     
     result.write.format('bigquery') \
-        .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table{os.getenv("ENDDATE").replace("-", "")}') \
+        .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table_{end_date_str}') \
         .option('temporaryGcsBucket', 'clx-dataint-data') \
         .option('clustering.fields', 'location,user_pseudo_id') \
         .mode('overwrite') \
@@ -128,10 +131,23 @@ def main() -> int:
 
     return 0
 
-@workflow
-def customer_journey_workflow() -> int:
+@workflow()
+def customer_journey_workflow(kickoff_time: datetime = None) -> int:
+    # Add kickoff_time as an input parameter, defaulting to None
     return main()
 
-if __name__ == "__main__":
-    customer_journey_workflow()
-    # pyflyte run --remote --service-account default --env STARTDATE=2025-03-01 --env ENDDATE=2025-05-02 customer_journey_workflow.py main 
+daily_customer_journey_workflow = LaunchPlan.get_or_create(
+    workflow=customer_journey_workflow,
+    name="daily_customer_journey_workflow",  # Fixed the name to match the workflow
+    schedule=CronSchedule(
+        schedule="0 0 * * *",
+        kickoff_time_input_arg="kickoff_time"
+    ),
+    auto_activate=True
+)
+    # To run the workflow manually:
+    # pyflyte run --remote --service-account default customer_journey_workflow.py customer_journey_workflow
+    
+    # To register the workflow with its schedule:
+    # pyflyte register --project customer_journey --domain development --service-account default customer_journey_workflow.py
+
