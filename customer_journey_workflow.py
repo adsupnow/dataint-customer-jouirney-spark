@@ -100,8 +100,7 @@ def main(end_of_end_date: Optional[str] = None, start_of_end_date: Optional[str]
     # return execute(spark, end_date, look_back)
 
 def execute(spark: Any, end_date: Optional[str] = None, look_back: Optional[str] = None, upstream_result: Optional[str] = None) -> int:
-    # Ensure we create a new Spark session each time
-    # spark = flytekit.current_context().spark_session
+
     today =  datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     end_date = datetime.strptime(end_date, "%Y-%m-%d") if end_date else today
     look_back_original = int(look_back) if look_back else 30
@@ -181,7 +180,7 @@ def customer_journey_workflow(kickoff_time: datetime = None,
     # Add kickoff_time as an input parameter, defaulting to None
     return main(end_of_end_date=end_of_end_date, start_of_end_date=start_of_end_date, look_back=look_back)
 
-    
+
 daily_customer_journey_workflow = LaunchPlan.get_or_create(
     workflow=customer_journey_workflow,
     name="daily_customer_journey_workflow_30days",  # Fixed the name to match the workflow
@@ -201,5 +200,4 @@ daily_customer_journey_workflow = LaunchPlan.get_or_create(
     
     # To register the workflow with its schedule:
     # pyflyte register --project flytesnacks --domain development --service-account default customer_journey_workflow.py
-    # Note: Replace 'flytesnacks' with an actual project that exists in your Flyte installation
 
