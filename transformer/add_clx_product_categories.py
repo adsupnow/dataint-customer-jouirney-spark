@@ -89,7 +89,7 @@ def paidsearch_allocation(utm_medium, utm_content, utm_campaign):
     campaign = None
     target = None
 
-    split_campaign = str(utm_campaign).split('-')  # dma-local-branded
+    split_campaign = str(utm_campaign).split('-') #dma-local-branded
     split_content = str(utm_content).split('-')
     if len(split_campaign) > 2:
         campaign = split_campaign[0]
@@ -97,7 +97,6 @@ def paidsearch_allocation(utm_medium, utm_content, utm_campaign):
     elif len(split_content) > 2:
         campaign = split_content[0]
         target = split_content[1]
-
 
     if utm_medium == 'search' and utm_content == 'sitelink':
         product += 'sitelink'
