@@ -41,19 +41,32 @@ def determine_allocation(event_url):
         product, campaign, target = paidsearch_allocation(utm_medium, utm_content, utm_campaign)       
     elif utm_campaign == "tcc":
         modal_widget = extract_utm_parameter(event_url, "modalwidget")
-        if utm_source=='imps.conversionlogix.com' and ('gmb' in str(utm_medium)):
-            product = gbpa_allocation(utm_medium, utm_campaign, modal_widget)
-        else:
-            product = tcc_allocation(modal_widget, utm_medium, utm_content, utm_campaign)
+        if utm_source=='imps.conversionlogix.com' and utm_medium=='email':
+            product = "tcc_email_confirmation"
+        # elif utm_source=='imps.conversionlogix.com' and ('gmb' in str(utm_medium)):
+        #     product = gbpa_allocation(utm_medium, utm_campaign, modal_widget)
+        # # TODO: Removed since will end in TCC categories that we dont want
+        # else:
+        #     product = tcc_allocation(modal_widget, utm_medium, utm_content, utm_campaign)
+    elif utm_medium == 'email' and utm_source == 'imps.conversionlogix.com' and utm_campaign is not None and utm_campaign.lower() in ('lead_nurture_email_cm', 'lead_nurture_email_sg'):
+            product = "tcc_lead_nurturing"
     elif utm_medium == "display" and (utm_content == "clx" or utm_content == "gt"):
         product, campaign, target = display_allocation(utm_content, utm_campaign)
     elif utm_medium == "display" and utm_content != "clx":
         product, campaign, target = social_allocation(utm_content, utm_campaign)
     elif utm_medium == "video" or utm_medium == "youtube":
         product, campaign, target = youtube_allocation(utm_content, utm_campaign)
-    elif utm_medium == "email":
+    elif utm_medium == "email" and utm_source == "imps.conversionlogix.com" and re.match(r'^\d{4}-[a-zA-Z0-9\-]+$', str(utm_campaign)):
         product = "email"
-    elif "gbp" in str(utm_medium):
+    elif utm_medium == "email" and utm_source != "imps.conversionlogix.com":
+        product = "other_email"
+    elif utm_source == 'imps.conversionlogix.com' and utm_medium is not None and 'gmb' in str(utm_medium):
+        modal_widget = extract_utm_parameter(event_url, "modalwidget")
+        product = gbpa_allocation(utm_medium, utm_campaign, modal_widget)
+    elif utm_source == 'imps.conversionlogix.com' and utm_medium is not None and 'gbp' in str(utm_medium):
+        modal_widget = extract_utm_parameter(event_url, "modalwidget")
+        product = gbpa_allocation(utm_medium, utm_campaign, modal_widget)
+    elif utm_source == 'imps.conversionlogix.com' and utm_medium is not None and 'gbpa' in str(utm_medium):
         modal_widget = extract_utm_parameter(event_url, "modalwidget")
         product = gbpa_allocation(utm_medium, utm_campaign, modal_widget)
     elif 'pmax' in str(utm_medium):
