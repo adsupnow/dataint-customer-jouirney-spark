@@ -23,6 +23,7 @@ from transformer.building_paths_with_lead_scoring__6_0_ import transform as buil
 from transformer.clx_session_model__4_0_ import transform as clx_session_model
 from transformer.combine_tables import transform as combined_tables
 from transformer.apply_location_v2 import transform as apply_location_v2
+from transformer.update_company_master_ids import transform as update_company_master_ids
 from datetime import datetime, timedelta
 from flytekit.core.schedule import CronSchedule
 from flytekit import LaunchPlan
@@ -115,12 +116,17 @@ def execute(spark: Any, end_date: Optional[str] = None, look_back: Optional[str]
     odoo_location = load_odoo_location(spark)
 
     tcc_companies = load_tcc_companies(spark)
+
+    updated_tcc_companies = update_company_master_ids(
+        tcc_companies=tcc_companies,
+        odoo_locations=odoo_location
+        )
     
     tcc_lead_journeys = load_tcc_lead_journeys(start_date, end_date, spark)
 
     tcc_session = load_tcc_sessions(start_date, end_date, spark)
 
-    df = join_events_to_tcc(event, tcc_session, tcc_companies, tcc_lead_journeys).cache()
+    df = join_events_to_tcc(event, tcc_session, updated_tcc_companies, tcc_lead_journeys).cache()
 
     df = apply_location_v2(df, odoo_location, spark)
 

@@ -2,6 +2,8 @@ import os
 from pyspark.sql import SparkSession, DataFrame
 from datetime import datetime, timedelta
 import traceback
+from pyspark.sql.functions import col
+from utils.constants import AUTO_LOCAL_IDS, CANCELLATION_IDS, GREYSTAR_IDS
 
 def load_data(spark: SparkSession, path: str):
     return spark.read.csv(path, header=True, inferSchema=True)
@@ -31,10 +33,31 @@ def load_tcc_companies(spark: SparkSession):
     """
     Load TCC companies data from BigQuery.
     """
-    return spark.read.format("com.google.cloud.spark.bigquery") \
-        .option("table", "xperience-prod.tcc.companies") \
-        .option("location", "us-central1") \
-        .load()
+    
+    query = """
+    SELECT *
+    FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY name ORDER BY master_id DESC) as rn
+        FROM `xperience-prod.tcc.companies`
+        WHERE active = TRUE
+        AND master_id IS NOT NULL
+    )
+    WHERE rn = 1
+    """
+
+    df = spark.read.format("com.google.cloud.spark.bigquery") \
+    .option("query", query) \
+    .option("parentProject", "xperience-prod") \
+    .option("materializationDataset", "tcc") \
+    .option("viewsEnabled", "true") \
+    .load()
+
+    combined_ids = CANCELLATION_IDS + GREYSTAR_IDS + AUTO_LOCAL_IDS
+
+    df = df.filter(~col("master_id").isin(combined_ids))
+
+    return df
         
 
 def load_tcc_lead_journeys(
@@ -48,6 +71,10 @@ def load_tcc_lead_journeys(
         .option("filter", f"created_at >= '{start_date.strftime('%Y-%m-%d')}' AND created_at <= '{end_date.strftime('%Y-%m-%d')}'") \
         .load()
     
+    combined_ids = CANCELLATION_IDS + GREYSTAR_IDS + AUTO_LOCAL_IDS
+
+    df = df.filter(~col("odoo_master_id").isin(combined_ids))
+
     return df
 
 def load_tcc_sessions(
@@ -66,13 +93,34 @@ def load_tcc_sessions(
 
 def load_odoo_location(spark: SparkSession):
     """
-    Load Odoo location data from CSV.
+    Load and deduplicate Odoo location data from BigQuery.
+    
+    This function loads data from the odoo_locations table, filtering out null master_ids
+    and removing duplicates based on the 'name' column, keeping the entry with the
+    highest 'master_id'.
     """
     
+    query = """
+        SELECT *
+        FROM (
+            SELECT *,
+                ROW_NUMBER() OVER (PARTITION BY name ORDER BY master_id DESC) as rn
+            FROM `clx-ga4.ga4_flat.odoo_locations`
+            WHERE master_id IS NOT NULL
+        )
+        WHERE rn = 1
+    """
+
     df = spark.read.format("com.google.cloud.spark.bigquery") \
-        .option("table", "clx-ga4.ga4_flat.odoo_locations") \
-        .option("location", "US") \
+        .option("query", query) \
+        .option("parentProject", "clx-ga4") \
+        .option("materializationDataset", "ga4_flat") \
+        .option("viewsEnabled", "true") \
         .load()
+    
+    combined_ids = AUTO_LOCAL_IDS + CANCELLATION_IDS + GREYSTAR_IDS
+    
+    df = df.filter(~col("master_id").isin(combined_ids))
     
     return df
     
