@@ -13,7 +13,7 @@ paid_search_vendors = ["google", "fb", "adwords", "localiq", "bing", "zillow", "
 # TODO: VERIFY IF THIS IS CORRECT
 # Google Pmax
 pmax_medium = ["pmax"]
-pmax_source = ["google"]
+#pmax_source = ["google"]
 
 # Display
 display_medium = ["display", "paiddisplay", "banner", "eastads.simpli.fi"]
@@ -128,6 +128,8 @@ def clx_channel_grouping(product, event_medium, event_source):
         return "CLX Social"
     elif "demand_gen_" in product:
         return "CLX DGP"
+    elif "pmax" in product:
+        return "CLX Pmax"
     elif event_medium and event_source:
         if event_medium in paid_search_medium and event_source in paid_search_vendors:
             return "Other Paid Search"
@@ -148,11 +150,11 @@ def clx_channel_grouping(product, event_medium, event_source):
             event_medium in organic_social_medium
         ):
             return "Organic Social"
-        elif event_medium in pmax_medium:
-            if event_source in pmax_source:
-                return "CLX Pmax"
-            else:
-                return "Other Pmax"
+        # elif event_medium in pmax_medium:
+        #     if event_source in pmax_source:
+        #         return "CLX Pmax"
+        #     else:
+        #         return "Other Pmax"
         elif event_medium in organic_medium:
             return "Organic Search"
         elif event_source == "direct":
@@ -204,7 +206,8 @@ def construct_clx_campaign_attribution_udf(product, campaign, target):
     
     if "paidsearch_other" in product:
         return "CLX_paidsearch_sitelink"
-    
+    elif "pmax" in product:
+        return "CLX_pmax"
     elif "paidsearch" in product:
         if campaign == "brand":
             if target == "local":

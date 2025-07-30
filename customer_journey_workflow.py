@@ -180,19 +180,13 @@ def execute(spark: Any, end_date: Optional[str] = None, look_back: Optional[str]
 
     result = combined_tables(hdf, hdf2)
     
-    # result.write.format('bigquery') \
-    #     .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table_{look_back_original_str}_days_look_back{end_date_str}') \
-    #     .option('temporaryGcsBucket', 'clx-dataint-data') \
-    #     .option('clustering.fields', 'location,user_pseudo_id') \
-    #     .mode('overwrite') \
-    #     .save()
-
     result.write.format('bigquery') \
-    .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table_{look_back_original_str}_days_look_back_{end_date_str}') \
-    .option('temporaryGcsBucket', 'clx-dataint-data') \
-    .option('clustering.fields', 'location,user_pseudo_id') \
-    .mode('overwrite') \
-    .save()
+        .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table_{look_back_original_str}_days_look_back{end_date_str}') \
+        .option('temporaryGcsBucket', 'clx-dataint-data') \
+        .option('clustering.fields', 'location,user_pseudo_id') \
+        .mode('overwrite') \
+        .save()
+
 
     # result.write.format('bigquery') \
     # .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.cj_investigation_table') \

@@ -37,6 +37,9 @@ def determine_allocation(event_url):
         product = 'demand_gen_plus'
     elif utm_source == 'imps.conversionlogix.com' and utm_medium is not None and utm_content is not None and 'search' in utm_medium and 'sitelink' in utm_content:
         product = 'paidsearch_other'
+    elif (utm_medium is not None and re.search(r'p?max|performance[- ]max', str(utm_medium), re.IGNORECASE)) or \
+         (utm_campaign is not None and re.search(r'p?max|performance[- ]max', str(utm_campaign), re.IGNORECASE)):
+        product = 'pmax'
     elif "search" in str(utm_medium):
         product, campaign, target = paidsearch_allocation(utm_medium, utm_content, utm_campaign)       
     elif utm_campaign == "tcc":
@@ -69,8 +72,6 @@ def determine_allocation(event_url):
     elif utm_source == 'imps.conversionlogix.com' and utm_medium is not None and 'gbpa' in str(utm_medium):
         modal_widget = extract_utm_parameter(event_url, "modalwidget")
         product = gbpa_allocation(utm_medium, utm_campaign, modal_widget)
-    elif 'pmax' in str(utm_medium):
-        product = 'pmax'
     else:
         product = None
 
