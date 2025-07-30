@@ -24,6 +24,7 @@ from transformer.clx_session_model__4_0_ import transform as clx_session_model
 from transformer.combine_tables import transform as combined_tables
 from transformer.apply_location_v2 import transform as apply_location_v2
 from transformer.update_company_master_ids import transform as update_company_master_ids
+from transformer.concat_dataframes import transform as concat_dataframes
 from datetime import datetime, timedelta
 from flytekit.core.schedule import CronSchedule
 from flytekit import LaunchPlan
@@ -88,6 +89,13 @@ dynamic_workflow_image = ImageSpec(
 )
 def main(end_of_end_date: Optional[str] = None, start_of_end_date: Optional[str]=None, look_back: Optional[str] = None) -> int:
     spark = flytekit.current_context().spark_session
+    
+    today = datetime.now()
+    if end_of_end_date is None:
+        end_of_end_date = today.strftime("%Y-%m-%d")
+    if start_of_end_date is None:
+        start_of_end_date = today.strftime("%Y-%m-%d")
+
     end_date = datetime.strptime(end_of_end_date, "%Y-%m-%d")
     global res
     res = None
@@ -117,8 +125,12 @@ def execute(spark: Any, end_date: Optional[str] = None, look_back: Optional[str]
 
     tcc_companies = load_tcc_companies(spark)
 
+    backfilled_companies = load_backfilled_companies(spark, tcc_companies)
+
+    combined_companies = concat_dataframes(tcc_companies, backfilled_companies)
+
     updated_tcc_companies = update_company_master_ids(
-        tcc_companies=tcc_companies,
+        tcc_companies=combined_companies,
         odoo_locations=odoo_location
         )
     
@@ -168,12 +180,26 @@ def execute(spark: Any, end_date: Optional[str] = None, look_back: Optional[str]
 
     result = combined_tables(hdf, hdf2)
     
+    # result.write.format('bigquery') \
+    #     .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table_{look_back_original_str}_days_look_back{end_date_str}') \
+    #     .option('temporaryGcsBucket', 'clx-dataint-data') \
+    #     .option('clustering.fields', 'location,user_pseudo_id') \
+    #     .mode('overwrite') \
+    #     .save()
+
     result.write.format('bigquery') \
-        .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table_{look_back_original_str}_days_look_back{end_date_str}') \
-        .option('temporaryGcsBucket', 'clx-dataint-data') \
-        .option('clustering.fields', 'location,user_pseudo_id') \
-        .mode('overwrite') \
-        .save()
+    .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.combined_table_{look_back_original_str}_days_look_back_{end_date_str}') \
+    .option('temporaryGcsBucket', 'clx-dataint-data') \
+    .option('clustering.fields', 'location,user_pseudo_id') \
+    .mode('overwrite') \
+    .save()
+
+    # result.write.format('bigquery') \
+    # .option('table', f'dataint-442318.{os.getenv("stage", "dev")}.cj_investigation_table') \
+    # .option('temporaryGcsBucket', 'clx-dataint-data') \
+    # .option('clustering.fields', 'location,user_pseudo_id') \
+    # .mode('overwrite') \
+    # .save()
     
 
     return 0
